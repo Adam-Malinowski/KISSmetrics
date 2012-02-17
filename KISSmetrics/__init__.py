@@ -13,12 +13,14 @@ from datetime import datetime
 
 class KM(object):
     
-    def __init__(self, key, host='trk.kissmetrics.com:80', http_timeout=2, logging=True):
+    def __init__(self, key, host='trk.kissmetrics.com:80', http_timeout=2,
+                 logging=True, fail_silently=True):
         self._id = None
         self._key    = key
         self._host = host
         self._http_timeout = http_timeout
         self._logging = logging
+        self._silent = fail_silently
 
     def identify(self, id):
         self._id = id
@@ -91,9 +93,16 @@ class KM(object):
 
         try:
             connection = httplib.HTTPConnection(self._host, timeout=self._http_timeout)
-            connection.request('GET', '/%s?%s' % (type, urllib.urlencode(data)))
+            data_str = '/%s?%s' % (type, urllib.urlencode(data))
+            connection.request('GET', data_str)
             r = connection.getresponse()
-        except:
-            self.logm("Could not transmit to " + self._host)
+        except Exception, e:
+            err_msg = "Could not transmit to %s, error %s, data str %s"\
+                      % (self._host, e, data_str)
+            self.logm(err_msg)
+            if not self._silent:
+                connection.close()
+                raise Exception, err_msg
         finally:
             connection.close()
+
